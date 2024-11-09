@@ -1,7 +1,8 @@
 #include <WeakLensing.H>
 
-void write_polyray_bundle(const std::vector<PolyRay>& polyrayvec,
-                          const std::string filename)
+void 
+WeakLensing::write_polyray_bundle(const std::vector<PolyRay>& polyrayvec,
+                          		  const std::string filename)
 {
     FILE *file_polyrays;
     file_polyrays = fopen(filename.c_str(),"w");
@@ -13,7 +14,6 @@ void write_polyray_bundle(const std::vector<PolyRay>& polyrayvec,
 
     int num_polyrays = polyrayvec.size();
     int num_points = polyrayvec[0].coord.size();
-    std::cout << "Num points is " << num_points <<"\n";
     int total_num_points = num_polyrays*polyrayvec[0].coord.size();
     int total_num_lines = num_polyrays*polyrayvec[0].dir.size();
 

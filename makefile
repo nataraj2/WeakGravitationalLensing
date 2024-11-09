@@ -8,7 +8,7 @@ CXXFLAGS = -std=c++14 -Wall -O2 -I. -MMD -MP
 INCLUDES = -I.
 
 # Source files
-SRCS = IO.cpp main.cpp
+SRCS = IO.cpp PolyRayFunctions.cpp main.cpp
 
 # Object directory
 OBJDIR = obj
@@ -41,4 +41,4 @@ $(OBJDIR)/%.o: %.cpp | $(OBJDIR)
 
 # Clean up build files
 clean:
-	rm -rf $(OBJDIR) $(EXEC)
+	rm -rf $(OBJDIR) $(EXEC) *.vtk
