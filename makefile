@@ -8,7 +8,7 @@ CXXFLAGS = -std=c++14 -Wall -O2 -I. -MMD -MP
 INCLUDES = -I.
 
 # Source files
-SRCS = IO.cpp PolyRayFunctions.cpp main.cpp
+SRCS = IO.cpp WL_Functions.cpp main.cpp
 
 # Object directory
 OBJDIR = obj
