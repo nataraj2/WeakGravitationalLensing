@@ -8,9 +8,9 @@ directions.
 
 ![RayShooting](Movies/EinsteinRingAll.gif)
 
-![ES1](EinsteinRing.png)
-![ES2](EinsteinRing_xshift_300pc.png)
-![ES3](EinsteinRing_yshift_300pc.png)
-![ES4](EinsteinRing_xandyshift_100pc.png)
+![ES1](Images/EinsteinRing.png)
+![ES2](Images/EinsteinRing_xshift_300pc.png)
+![ES3](Images/EinsteinRing_yshift_300pc.png)
+![ES4](Images/EinsteinRing_xandyshift_100pc.png)
 
 
