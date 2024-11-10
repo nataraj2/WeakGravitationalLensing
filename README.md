@@ -10,10 +10,10 @@ directions.
 
 ![ES1](Images/EinsteinRing.png)
 
-![ES2](Images/EinsteinRing_xshift_300pc.png)
+![ES2](Images/EinsteinRingArcs_xshift_300pc.png)
 
-![ES3](Images/EinsteinRing_yshift_300pc.png)
+![ES3](Images/EinsteinRingArcs_yshift_300pc.png)
 
-![ES4](Images/EinsteinRing_xandyshift_100pc.png)
+![ES4](Images/EinsteinRingArcs_xandyshift_100pc.png)
 
 
