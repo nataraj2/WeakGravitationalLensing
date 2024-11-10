@@ -42,10 +42,12 @@ int main()
 
 		wl.check_intersect_polyray_bundle(polyrayvec, final_polyrayvec);	
 		wl.write_polyray_bundle(polyrayvec,"polyray_bundle.vtk");
+		
 	}
 
 	if(final_polyrayvec.size() > 0) {	
 		wl.write_polyray_bundle(final_polyrayvec, "finalpolyrayvec.vtk");
+		wl.create_polray_bundle_for_movie(final_polyrayvec);	
 	}
 }
 
