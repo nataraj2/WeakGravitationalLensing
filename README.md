@@ -4,8 +4,7 @@ weak gravitational lensing scenarios.
 
 The animation shows the shooting of rays from the observer as cone-by-cone incrementally increasing the half radius of the cone.   
 The figures show the rays that intersect the point source for (a) perfect alignment, (b) xshift of 300 pc,   
-(c) yshift of 300 pc, and (d) xshift and yshift of 100 pc.
-directions.
+(c) yshift of 300 pc, and (d) xshift and yshift of 100 pc. 
 
 ![RayShooting](Movies/EinsteinRingAll.gif)
 
