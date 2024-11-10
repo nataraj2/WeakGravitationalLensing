@@ -2,3 +2,4 @@
 *.vtk
 *.log
 obj/
+temporary_file
