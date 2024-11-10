@@ -56,6 +56,13 @@ void
 WeakLensing::deflect_polyray_bundle(const std::vector<double>& dist_lens_m,
 									std::vector<PolyRay>& polyrayvec)
 {
+
+	double xshift = 1e-7; // GPc
+	double yshift = 1e-7; // Gpc
+
+	double xshift_m = convert_Gpc_to_m(xshift);
+	double yshift_m = convert_Gpc_to_m(yshift);
+
 	int num_rays = polyrayvec.size();
 
 	double dir[3];
@@ -68,12 +75,12 @@ WeakLensing::deflect_polyray_bundle(const std::vector<double>& dist_lens_m,
         double x = polyrayvec[iray].coord[0][0] + dist_lens_m[0]*polyrayvec[iray].dir[0][0];
         double y = polyrayvec[iray].coord[0][1] + dist_lens_m[0]*polyrayvec[iray].dir[0][1];
 
-        double xi = std::pow(x*x+y*y,0.5);
+        double xi = std::pow((x-xshift_m)*(x-xshift_m)+(y-yshift_m)*(y-yshift_m),0.5);
         double alpha = 4.0*G_val*M_val/(c_val*c_val*xi);
 	
 		// Unit vector in the direction from the intersection of the ray at the lens 
 		// plane to the gravtiational source	
-		Triplet xihat(-x/xi, -y/xi, 0.0);
+		Triplet xihat(-(x-xshift_m)/xi, -(y-yshift_m)/xi, 0.0);
 		
 		// Find the normal n to the plane about which rotation takes place
 		// (initial_ray_dir cross xihat) is in the direction of the normal to 

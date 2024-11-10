@@ -7,9 +7,13 @@ int main()
 	int nlens = 1;
 
 	// Parameters to create light ray bundles	
-	int num_angles_theta = 100;
-	int num_angles_phi = 20;
-	double theta_max = 2e-5;
+	int num_angles_theta = 1000;
+	int num_angles_phi = 1000;
+	double theta_max = 5e-5;
+
+	//int num_angles_theta = 300;
+	//int num_angles_phi = 50;
+	//double theta_max = 1e-5;
 
 	int num_rays = num_angles_phi;
 
@@ -40,15 +44,27 @@ int main()
 		// intersects the source. If it does, then add it to the 
 		// final_polyrayvec
 
-		wl.check_intersect_polyray_bundle(polyrayvec, final_polyrayvec);	
-		wl.write_polyray_bundle(polyrayvec,"polyray_bundle.vtk");
+		wl.check_intersect_polyray_bundle(polyrayvec, final_polyrayvec);
+		std::string filename;
+		if(itheta<=9) {
+			filename = "polyray_bundle_00" + std::to_string(itheta) + ".vtk";
+		} else if(itheta<=99) {
+			filename = "polyray_bundle_0" + std::to_string(itheta) + ".vtk";
+		} else if(itheta<=999) {
+			filename = "polyray_bundle_" + std::to_string(itheta) + ".vtk";
+		}
+			
+		wl.write_polyray_bundle(polyrayvec,filename);
 		
 	}
 
-	if(final_polyrayvec.size() > 0) {	
+	if(final_polyrayvec.size() > 0) {
+		std::cout << "Writing final polyrayvec" << "\n";	
 		wl.write_polyray_bundle(final_polyrayvec, "finalpolyrayvec.vtk");
 		wl.create_polray_bundle_for_movie(final_polyrayvec);	
 	}
+
+	wl.write_lens_and_source_objects();
 }
 
 

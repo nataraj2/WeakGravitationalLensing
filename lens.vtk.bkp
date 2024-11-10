@@ -1,0 +1,12 @@
+# vtk DataFile Version 3.0
+Structured Grid Example with Scalar Field
+ASCII
+DATASET STRUCTURED_POINTS
+DIMENSIONS 2 2 1
+ORIGIN -0.00001 -0.00001 0.0001
+SPACING 0.00002 0.00002 0.0001
+POINT_DATA 4
+SCALARS Temperature float 1
+LOOKUP_TABLE default
+1.0 1.0
+1.0 1.0

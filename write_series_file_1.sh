@@ -21,13 +21,13 @@ for dir in *; do
     dir_name=$(basename "$dir")
 
     # Check if the folder starts with "plt" and contains a file named "Header"
-    if [[ "$dir_name" == polyray_bundle_* ]]; then
+    if [[ "$dir_name" == tmp_polyray_bundle_* ]]; then
         # Extract version number from folder name
-        version="${dir_name#polyray_bundle_}"
+        version="${dir_name#tmp_polyray_bundle_}"
         echo $version
 
         # Create file information
-        files_list+="$(printf "{ \"name\": \"polyray_bundle_$version\", \"time\": $count},")"
+        files_list+="$(printf "{ \"name\": \"tmp_polyray_bundle_$version\", \"time\": $count},")"
         files_list+=$'\n'
 
         ((count++))

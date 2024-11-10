@@ -84,6 +84,8 @@ public:
                                         std::vector<PolyRay>& final_polyrayvec);
 
 	void create_polray_bundle_for_movie(const std::vector<PolyRay>& polyrayvec);
+
+	void write_lens_and_source_objects();
 };
 
 

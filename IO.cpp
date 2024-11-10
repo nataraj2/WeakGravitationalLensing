@@ -1,5 +1,39 @@
 #include <WeakLensing.H>
 
+void
+WeakLensing::write_lens_and_source_objects()
+{
+	FILE *file_lensplane;
+    file_lensplane = fopen("lens.vtk","w");
+    fprintf(file_lensplane, "%s\n","# vtk DataFile Version 3.0");
+    fprintf(file_lensplane, "%s\n","Lens plane");
+    fprintf(file_lensplane, "%s\n","ASCII");
+    fprintf(file_lensplane, "%s\n","DATASET STRUCTURED_POINTS");
+	fprintf(file_lensplane, "%s %d %d %d\n", "DIMENSIONS", 2, 2, 1);
+	fprintf(file_lensplane, "%s %0.15g %0.15g %0.15g\n","ORIGIN", -1e-5, -1e-5, D_OL*1e-4);
+	fprintf(file_lensplane, "%s %0.15g %0.15g %0.15g\n","SPACING", 2e-5, 2e-5, D_OL*1e-4);
+	fprintf(file_lensplane, "%s %d\n","POINT_DATA", 4);
+	fprintf(file_lensplane, "%s %d\n", "SCALARS Temperature float", 1);
+	fprintf(file_lensplane, "%s\n", "LOOKUP_TABLE default");
+	fprintf(file_lensplane, "%0.15g %0.15g\n", 1.0,1.0);
+	fprintf(file_lensplane, "%0.15g %0.15g\n", 1.0,1.0);
+	fclose(file_lensplane); 
+
+
+	FILE *file_objects;
+    file_objects = fopen("source_and_lens.vtk","w");
+    fprintf(file_objects, "%s\n","# vtk DataFile Version 3.0");
+    fprintf(file_objects, "%s\n","Lens and source with points");
+    fprintf(file_objects, "%s\n","ASCII");
+    fprintf(file_objects, "%s\n","DATASET POLYDATA");
+	
+	fprintf(file_objects, "%s %d %s\n", "POINTS", 2, "float");
+	fprintf(file_objects, "%0.15g %0.15g %0.15g\n",0.0,0.0,D_OL*1e-4); 
+	fprintf(file_objects, "%0.15g %0.15g %0.15g\n",0.0,0.0,(D_OL+D_LS)*1e-4);
+	fclose(file_objects);
+
+}
+
 void 
 WeakLensing::write_polyray_bundle(const std::vector<PolyRay>& polyrayvec,
                           		  const std::string filename)
@@ -28,7 +62,6 @@ WeakLensing::write_polyray_bundle(const std::vector<PolyRay>& polyrayvec,
     }
 
     fprintf(file_polyrays, "%s %d %d\n", "LINES", total_num_lines, total_num_lines*3);
-	std::cout << "Num points is " << num_points << "\n";
     for(int iray=0;iray<num_polyrays;iray++) {
         for(int i=0;i<num_points-1;i++){
             fprintf(file_polyrays, "%d %d %d\n", 2, iray*num_points + i, iray*num_points + i + 1);
