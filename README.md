@@ -5,8 +5,8 @@ weak gravitational lensing scenarios.
 
 | ![ES1](Movies/EinsteinRingAll.gif) |
 |:--:|
-*Figure 1: The animation shows the shooting of rays from the observer as cone-by-cone incrementally increasing the half angle of the cone.
-The blue plane shows the lensing plane.*  
+*Figure 1: The animation shows the shooting of rays from the observer as cone-by-cone incrementally increasing the half angle of the cone.*
+*The blue plane shows the lensing plane.*  
 
 ![ES1](Images/ES1.png)    
 ![ES2](Images/ES2.png)  
