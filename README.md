@@ -9,9 +9,14 @@ weak gravitational lensing scenarios.
 |:--:|
 *Figure 2: The animation shows the shooting of rays from the observer as cone-by-cone incrementally increasing the half angle of the cone. The blue plane shows the lensing plane.*
 
+| ![ES1](Final_polyrayvec.gif) |
+|:--:|
+*Figure 3: The animation shows the rays from the observer that reach the source after deflection for the case where the lens object is shifted from the alignment line.*
+
+
 ![ES1](Images/ES1.png)    
 ![ES2](Images/ES2.png)  
-*Figure 3: The figures show the rays that intersect the point source for (a) perfect alignment, and shifted lens object with (b) xshift of 300 pc,
+*Figure 4: The figures show the rays that intersect the point source for (a) perfect alignment, and shifted lens object with (b) xshift of 300 pc,
 (c) yshift of 300 pc, and (d) xshift and yshift of 100 pc. The perfect alignment produces a perfect Einstein ring, whereas shifting the lens position
  creates arcs.*  
 
