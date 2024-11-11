@@ -12,7 +12,7 @@ weak gravitational lensing scenarios.
 ![ES1](Images/ES1.png)    
 ![ES2](Images/ES2.png)  
 *Figure 3: The figures show the rays that intersect the point source for (a) perfect alignment, and shifted lens object with (b) xshift of 300 pc,
-(c) yshift of 300 pc, and (d) xshift and yshift of 100 pc. The perfect alignment produces a perfect Einstein ring. whereas shifting the lens position
+(c) yshift of 300 pc, and (d) xshift and yshift of 100 pc. The perfect alignment produces a perfect Einstein ring, whereas shifting the lens position
  creates arcs.*  
 
 
