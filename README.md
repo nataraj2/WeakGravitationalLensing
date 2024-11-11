@@ -9,7 +9,7 @@ weak gravitational lensing scenarios.
 |:--:|
 *Figure 2: The animation shows the shooting of rays from the observer as cone-by-cone incrementally increasing the half angle of the cone. The blue plane shows the lensing plane.*
 
-| ![ES1](Final_polyrayvec.gif) |
+| ![ES1](Movies/Final_polyrayvec.gif) |
 |:--:|
 *Figure 3: The animation shows the rays from the observer that reach the source after deflection for the case where the lens object is shifted from the alignment line.*
 
