@@ -7,9 +7,13 @@ The figures show the rays that intersect the point source for (a) perfect alignm
 (c) yshift of 300 pc, and (d) xshift and yshift of 100 pc. 
 
 ![RayShooting](Movies/EinsteinRingAll.gif)
+*Figure 1: Description of ES1*
+
 
 ![ES1](Images/ES1.png)
+*Figure 1: Description of ES1*
 
 ![ES2](Images/ES2.png)
+*Figure 1: Description of ES1*
 
 
