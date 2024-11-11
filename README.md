@@ -2,7 +2,9 @@
 This code framework contains tools necessary to perform ray tracing for 
 weak gravitational lensing scenarios.
 
-![RayShooting](Movies/EinsteinRingAll.gif)  
+<div align="center">
+  <img src="Movies/EinsteinRingAll.gif" alt="Description of ES1" width="50%">
+</div>  
 *Figure 1: The animation shows the shooting of rays from the observer as cone-by-cone incrementally increasing the half angle of the cone.*  
 
 ![ES1](Images/ES1.png)    
