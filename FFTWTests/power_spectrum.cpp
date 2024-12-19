@@ -2,7 +2,7 @@
 #include <cmath>
 #include <fftw3.h>
 #include <random>
-
+#include <algorithm>
 
 double
 power_spectrum(double k)
@@ -14,6 +14,24 @@ power_spectrum(double k)
 	}
 }
 
+void
+sort_power_spectrum(std::vector<std::pair<double, double>>& data)
+{
+
+ // Sort the vector by the first element of the pair
+    std::sort(data.begin(), data.end(), [](const std::pair<double, double>& a, const std::pair<double, double>& b) {
+        return a.first < b.first;
+    });
+
+    // Remove duplicates based on the first element of the pair
+    auto it = std::unique(data.begin(), data.end(), [](const std::pair<double, double>& a, const std::pair<double, double>& b) {
+        return a.first == b.first;
+    });
+
+    data.erase(it, data.end());
+
+
+}
 int main() {
     // Define grid size
     const int N = 8; // Number of points in each dimension
@@ -125,8 +143,7 @@ int main() {
         }
     }	
 
-	std::vector<double> Pk_computed;
-	std::vector<double> kvec;
+	std::vector<std::pair<double, double>> k_and_Pk_unsrt;
 	int count = 1;
 	for (int kz = 0; kz <= N/2; ++kz) {
         for (int ky = 0; ky <= N/2; ++ky) {
@@ -136,16 +153,30 @@ int main() {
                 double imag_part = fft_out[idx][1]/total_points;
 				
 				double kmag = std::sqrt(kx*kx + ky*ky + kz*kz);
-				kvec.push_back(kmag);
-	
 				double tmp = 2.0*(real_part*real_part + imag_part*imag_part);
+				tmp = std::fabs(tmp) < 1e-14 ? 0.0 : tmp;
 
-				Pk_computed.push_back(tmp);
-				std::cout << count << " " << kmag << " " << power_spectrum(kmag) << " " << tmp << "\n";
+				std::pair<double, double> data_tmp = {kmag, tmp};
+				k_and_Pk_unsrt.emplace_back(data_tmp);
+				//std::cout << count << " " << kmag << " " << power_spectrum(kmag) << " " << tmp << "\n";
 				count++;	
 			}
 		}
 	}
+
+	sort_power_spectrum(k_and_Pk_unsrt);
+
+	std::cout << "Size is " << k_and_Pk_unsrt.size() << "\n";
+
+	FILE* file_k_vs_Pk;
+	file_k_vs_Pk = fopen("k_vs_Pk.txt","w");	
+	
+	for (const auto& p : k_and_Pk_unsrt) {
+		fprintf(file_k_vs_Pk,"%0.15g %0.15g %0.15g\n", p.first, p.second, power_spectrum(p.first));
+        std::cout << "(" << p.first << ", " << p.second << ")\n";
+    }	
+	fclose(file_k_vs_Pk);
+
 					
     // Free memory and clean up FFTW
     fftw_destroy_plan(forward_plan);
