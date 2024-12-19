@@ -25,7 +25,7 @@ int main() {
             for (int i = 0; i < N; ++i) {
                 double x = i * dx; // x-coordinate
                 int idx = k * N * N + j * N + i; // 3D index flattened
-                data[idx][0] = sin(2 * M_PI * (x+y));// + sin(2 * M_PI * y);//* sin(2 * M_PI * z); // Real part
+                data[idx][0] = sin(2 * M_PI * x);// + sin(2 * M_PI * y);//* sin(2 * M_PI * z); // Real part
                 data[idx][1] = 0.0; // Imaginary part
             }
         }

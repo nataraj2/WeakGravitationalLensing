@@ -1,40 +1,8 @@
-#include <iostream>
-#include <cmath>
-#include <fftw3.h>
-#include <random>
-#include <algorithm>
+#include <DarkMatter.H>
 
-double
-power_spectrum(double k)
-{
-	if(k != 0.0) {
-		return 1.0/(k*k);
-	} else {
-		return 0.0;
-	}
-}
-
-void
-sort_power_spectrum(std::vector<std::pair<double, double>>& data)
-{
-
- // Sort the vector by the first element of the pair
-    std::sort(data.begin(), data.end(), [](const std::pair<double, double>& a, const std::pair<double, double>& b) {
-        return a.first < b.first;
-    });
-
-    // Remove duplicates based on the first element of the pair
-    auto it = std::unique(data.begin(), data.end(), [](const std::pair<double, double>& a, const std::pair<double, double>& b) {
-        return a.first == b.first;
-    });
-
-    data.erase(it, data.end());
-
-
-}
 int main() {
     // Define grid size
-    const int N = 8; // Number of points in each dimension
+    const int N = 32; // Number of points in each dimension
     const double L = 1.0; // Domain size in each dimension
     const double dx = L / N; // Grid spacing
 
@@ -58,9 +26,6 @@ int main() {
     for (int kz = 0; kz < N; ++kz) {
         for (int ky = 0; ky < N; ++ky) {
             for (int kx = 0; kx < N; ++kx) {
-				if(ky!=0 or kz!=0) {
-					//continue;
-				}
 				int index = kz * N * N + ky * N + kx; // 3D index flattened
 	
                 if(kx > N/2 or ky > N/2 or kz > N/2) {
@@ -87,8 +52,8 @@ int main() {
     	            // Assign random Fourier coefficients with Gaussian-distributed amplitudes
         	        double amplitude = std::sqrt(P_k / 2.0); // Scale by sqrt(P(k)/2) for real+imag contributions
 					double rand = normal_dist(generator);
-            	    double real_part = amplitude * 0.0;//std::cos(2.0*M_PI*rand);
-                	double imag_part = amplitude * -1.0;//std::sin(2.0*M_PI*rand);
+            	    double real_part = amplitude * std::cos(2.0*M_PI*rand);
+                	double imag_part = amplitude * std::sin(2.0*M_PI*rand);
 
                 	fft_in[index][0] = real_part; // Real part
                 	fft_in[index][1] = imag_part; // Imaginary part
@@ -176,7 +141,6 @@ int main() {
         std::cout << "(" << p.first << ", " << p.second << ")\n";
     }	
 	fclose(file_k_vs_Pk);
-
 					
     // Free memory and clean up FFTW
     fftw_destroy_plan(forward_plan);
