@@ -10,7 +10,14 @@
 #include <random>
 #include <algorithm>
 
-void plot_DM_particles_vtk();
+class DMParticle
+{
+	public:
+		double x, y, z;
+};
+
+
+void plot_DM_particles_vtk (std::vector<DMParticle>& dm_particles);
 
 inline void sort_power_spectrum(std::vector<std::pair<double, double>>& data)
 {
@@ -28,13 +35,5 @@ inline void sort_power_spectrum(std::vector<std::pair<double, double>>& data)
     data.erase(it, data.end());
 }
 
-inline double
-power_spectrum(double k)
-{
-    if(k != 0.0) {
-        return 1.0/(k*k);
-    } else {
-        return 0.0;
-    }
-}
+
 #endif // DARKMATTER_H
