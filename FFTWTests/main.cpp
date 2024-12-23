@@ -4,34 +4,36 @@ inline double
 power_spectrum(double k)
 {
     if(k != 0.0) {
-        return 1e-8/(k*k);
+        return 1e-5/(k*k);
     } else {
         return 0.0;
     }
 }
 
+// Example main function
 int main() {
+
+    
     // Define grid size
     const int N = 128; // Number of points in each dimension
     const double L = 1.0; // Domain size in each dimension
     const double dx = L / N; // Grid spacing
 
     // Allocate memory for the function and its Fourier transform
-    fftw_complex *data = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
     fftw_complex *Pk = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
     fftw_complex *fft_out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
 
     // Create the FFTW plan
-	fftw_plan inverse_plan = fftw_plan_dft_3d(N, N, N, Pk, data, FFTW_BACKWARD, FFTW_ESTIMATE);
 
 	double total_points = N * N * N;
+
 
 	// Random number generation for phases (Gaussian distributed)
     std::random_device rd;
     std::mt19937 generator(rd());
     std::normal_distribution<double> normal_dist(0.0, 1.0); // Mean = 0, Stddev = 1
 
-
+	
     // Initialize the input data with f(x, y, z) = sin(2*pi*x)*sin(2*pi*y)*sin(2*pi*z)
     for (int kz = 0; kz < N; ++kz) {
         for (int ky = 0; ky < N; ++ky) {
@@ -40,17 +42,17 @@ int main() {
 				int index = kz * N * N + ky * N + kx; // 3D index flattened
 		
 				// Compute the physical wavenumber magnitude
-				
-				double kx_phys = kx <= N/2 ? kx : kx-N;
-				double ky_phys = ky <= N/2 ? ky : ky-N;
-				double kz_phys = kz <= N/2 ? kz : kz-N;
+				std::vector<double> k_phys(3,0.0);
+				std::vector<int> k_phys_int(3,0);
 
+				get_physical_wavenumber(L, N, kx, ky, kz, k_phys, k_phys_int);
+				
 				// The -k is 
-				double kx_minus = -kx_phys;
-				double ky_minus = -ky_phys;
-				double kz_minus = -kz_phys;
+				double kx_minus = -k_phys_int[0];
+				double ky_minus = -k_phys_int[1];
+				double kz_minus = -k_phys_int[2];
 	
-                double k_mag = std::sqrt(kx_phys * kx_phys + ky_phys * ky_phys + kz_phys * kz_phys);
+                double k_mag = std::sqrt(k_phys[0] * k_phys[0] + k_phys[1] * k_phys[1] + k_phys[2] * k_phys[2]);
 
                 // Get the power spectrum value
 	            double Pk_mag = power_spectrum(k_mag);
@@ -69,6 +71,7 @@ int main() {
 					Pk[index][1] = 0.0;
 				}
 
+				
 				double kx_mir = kx_minus >= 0 ? kx_minus : N+kx_minus;	
 				double ky_mir = ky_minus >= 0 ? ky_minus : N+ky_minus;	
 				double kz_mir = kz_minus >= 0 ? kz_minus : N+kz_minus;
@@ -86,25 +89,27 @@ int main() {
     }
 
     // Output the results
-    std::cout << "Fourier Transform Output:" << std::endl;
-    for (int kz = 0; kz < N; ++kz) {
+    /*for (int kz = 0; kz < N; ++kz) {
         for (int ky = 0; ky < N; ++ky) {
             for (int kx = 0; kx < N; ++kx) {
                 int idx = kz * N * N + ky * N + kx; // 3D index flattened
                 double real_part = Pk[idx][0];
                 double imag_part = Pk[idx][1];
+				std::vector<double> k_phys(3,0.0);
+				std::vector<int> k_phys_int(3,0);
 
-				double kx_phys = kx <= N/2 ? kx : kx-N;
-                double ky_phys = ky <= N/2 ? ky : ky-N;
-                double kz_phys = kz <= N/2 ? kz : kz-N;
+				get_physical_wavenumber(L, N, kx, ky, kz, k_phys, k_phys_int);
 
-                //std::cout << "k=(" << kx_phys << ", " << ky_phys << ", " << kz_phys << ") : "
-                  //       << "Real=" << real_part << ", Imag=" << imag_part << std::endl;
+                std::cout << "k=(" << kx_phys << ", " << ky_phys << ", " << kz_phys << ") : "
+                         << "Real=" << real_part << ", Imag=" << imag_part << std::endl;
             }
         }
-    }
+    }*/
+
 
 	// Perform the inverse Fourier transform
+    fftw_complex *data = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
+	fftw_plan inverse_plan = fftw_plan_dft_3d(N, N, N, Pk, data, FFTW_BACKWARD, FFTW_ESTIMATE);
     fftw_execute(inverse_plan);
 	fftw_destroy_plan(inverse_plan);
 
@@ -119,6 +124,21 @@ int main() {
             }
         }
     }
+
+// Define scalar field values (example: a simple gradient field)
+    std::vector<double> delta(N * N  * N, 0.0);
+    for (int k = 0; k < N; ++k) {
+        for (int j = 0; j < N; ++j) {
+            for (int i = 0; i < N; ++i) {
+                int index = k * N * N + j * N + i;
+                delta[index] = data[index][0]; // Example: radial distance
+            }
+        }
+    }
+
+    // Write to VTK file
+    writeStructuredGridVTK("delta_field.vtk", N, N, N, delta);
+
 
 	
 // Perform the Fourier transform
@@ -148,12 +168,16 @@ int main() {
 				int idx = kz * N * N + ky * N + kx; // 3D index flattened
 				double real_part = fft_out[idx][0]/total_points;
                 double imag_part = fft_out[idx][1]/total_points;
-				
-				double kmag = std::sqrt(kx*kx + ky*ky + kz*kz);
+
+				std::vector<double> k_phys(3,0.0);
+				std::vector<int> k_phys_int(3,0);
+
+				get_physical_wavenumber(L, N, kx, ky, kz, k_phys, k_phys_int);
+                double k_mag = std::sqrt(k_phys[0] * k_phys[0] + k_phys[1] * k_phys[1] + k_phys[2] * k_phys[2]);
 				double tmp = 2.0*(real_part*real_part + imag_part*imag_part);
 				tmp = std::fabs(tmp) < 1e-14 ? 0.0 : tmp;
 
-				std::pair<double, double> data_tmp = {kmag, tmp};
+				std::pair<double, double> data_tmp = {k_mag, tmp};
 				k_and_Pk_unsrt.emplace_back(data_tmp);
 				//std::cout << count << " " << kmag << " " << power_spectrum(kmag) << " " << tmp << "\n";
 				count++;	
@@ -186,12 +210,16 @@ int main() {
             for (int kx = 0; kx < N; ++kx) {
                 int index = kz * N * N + ky * N + kx; // 3D index flattened
 
+				std::vector<double> k_phys(3,0.0);
+				std::vector<int> k_phys_int(3,0);
 
-				double kx_phys = kx <= N/2 ? kx : kx-N;
-                double ky_phys = ky <= N/2 ? ky : ky-N;
-                double kz_phys = kz <= N/2 ? kz : kz-N;
+				get_physical_wavenumber(L, N, kx, ky, kz, k_phys, k_phys_int);
 
-                double k_mag = std::sqrt(kx_phys * kx_phys + ky_phys * ky_phys + kz_phys * kz_phys);
+				double kx_phys = k_phys[0];
+				double ky_phys = k_phys[1];
+				double kz_phys = k_phys[2];
+
+                double k_mag = std::sqrt(k_phys[0] * k_phys[0] + k_phys[1] * k_phys[1] + k_phys[2] * k_phys[2]);
 
 				if(k_mag == 0.0){
 					psi_x_k[index][0] = 0.0;
@@ -207,19 +235,19 @@ int main() {
                     // The N - kx coefficient will already have been computed
                     psi_x_k[index][0] =  -1.0*kx_phys/(k_mag*k_mag)*Pk[index][1]; // Real part
                     psi_x_k[index][1] =       kx_phys/(k_mag*k_mag)*Pk[index][0]; // Imaginary part
-					if(kx_phys == N/2) {
+					if(k_phys_int[0] == N/2) {
 						psi_x_k[index][1] = 0.0;
 					}
 
 					psi_y_k[index][0] =  -1.0*ky_phys/(k_mag*k_mag)*Pk[index][1]; // Real part
                     psi_y_k[index][1] =       ky_phys/(k_mag*k_mag)*Pk[index][0]; // Imaginary part
-					if(ky_phys == N/2) {
+					if(k_phys_int[1] == N/2) {
 						psi_y_k[index][1] = 0.0;
 					}
 
 					psi_z_k[index][0] =  -1.0*kz_phys/(k_mag*k_mag)*Pk[index][1]; // Real part
                     psi_z_k[index][1] =       kz_phys/(k_mag*k_mag)*Pk[index][0]; // Imaginary part
-					if(kz_phys == N/2) {
+					if(k_phys_int[2] == N/2) {
 						psi_z_k[index][1] = 0.0;
 					}
 				}
@@ -254,7 +282,7 @@ int main() {
                 int index = kz * N * N + ky * N + kx; // 3D index flattened
 				//std::cout << kx << " " << ky << " " << kz << " " << psi_x_k[index][0] << " " << psi_x_k[index][1] << "\n"; 
 				//std::cout << kx << " " << ky << " " << kz << " " << psi_z[index][0] << " " << psi_z[index][1] << "\n"; 
-				std::cout << psi_x[index][0] << " " << psi_y[index][0] << " " << psi_z[index][0] << "\n";
+				std::cout << "Values are " << psi_x[index][0] << " " << psi_y[index][0] << " " << psi_z[index][0] << "\n";
 				psi_mag.emplace_back(std::sqrt(psi_x[index][0]*psi_x[index][0] + psi_y[index][0]*psi_y[index][0] + psi_z[index][0]*psi_z[index][0]));
 			}
 		}
@@ -284,9 +312,7 @@ int main() {
 	}
 				
 	// Create mesh of particles and displace
-	plot_DM_particles_vtk(dm_particles);				
-
-	
+	plot_DM_particles_vtk(dm_particles);
 	
     // Free memory and clean up FFTW
     fftw_free(data);
