@@ -10,12 +10,27 @@
 #include <random>
 #include <algorithm>
 #include <fstream>
+#include <functional>
+
 
 class DMParticle
 {
 	public:
 		double x, y, z;
 };
+
+class Node
+{
+	public:
+		double mass;
+};
+
+void 
+generate_fourier_coefficients_for_field_with_spectrum(const int N, const double L, const std::function<double(double)>& func, fftw_complex *Pk);
+
+void
+compute_fourier_coefficients_for_psi(const int N, const double L, const fftw_complex *delta_k,
+                                     fftw_complex *psi_x_k, fftw_complex *psi_y_k, fftw_complex *psi_z_k);
 
 void plot_DM_particles_vtk (std::vector<DMParticle>& dm_particles);
 
@@ -49,4 +64,14 @@ inline void get_physical_wavenumber(const double& L, const int N,
 	k_phys[1] = 2.0*M_PI/L*k_phys_int[1];
 	k_phys[2] = 2.0*M_PI/L*k_phys_int[2];
 }
+
+
+inline void 
+checkCondition(bool condition, const char* errorMessage) {
+    if (!condition) {
+        throw std::runtime_error(errorMessage);
+    }
+}
+
+
 #endif // DARKMATTER_H
