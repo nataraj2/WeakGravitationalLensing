@@ -147,7 +147,7 @@ int main() {
 
 	try {
         // Custom assert with throwing an error
-        checkCondition(*it < dx, "Assertion failed: *it < dx");
+        checkCondition(*it < 0.5*dx, "Assertion failed: *it < dx");
 
         std::cout << "Condition satisfied." << std::endl;
     } catch (const std::runtime_error& e) {
@@ -178,7 +178,6 @@ int main() {
 	// Create mesh of particles and displace
 	plot_DM_particles_vtk(dm_particles);
 
-
 	// Assign mass to nodes
 
 	std::vector<Node> nodes;
@@ -188,7 +187,9 @@ int main() {
 		v.mass = 0.0;
 	}
 
-	/*for (int n = 0; n < dm_particles.size(); ++n) {
+	std::vector<int>node_indices(3,0);
+	int index;
+	for (int n = 0; n < dm_particles.size(); ++n) {
 		double xp = dm_particles[n].x;
 		double yp = dm_particles[n].y;
 		double zp = dm_particles[n].z;
@@ -200,9 +201,27 @@ int main() {
 
 		// Distribute the mass to the 8 nodes of the cell based on bilinear interpolation
 	
-		for(int l=0; l<8; l++) {
-					
-		}*/	
+		for(int id=0; id<8; id++) {
+			get_global_node_index_and_indices(id, i, j, k, N, index, node_indices);
+			// Find the trilinear interpolation coefficetns
+			double xnode = node_indices[0]*dx;
+			double ynode = node_indices[1]*dx;
+			double znode = node_indices[2]*dx;
+
+			double wx = 1.0 - std::fabs(xp - xnode)/dx;
+			double wy = 1.0 - std::fabs(yp - ynode)/dx;
+			double wz = 1.0 - std::fabs(zp - znode)/dx;
+
+			nodes[index].mass = nodes[index].mass + wx*wy*wz*1.0;			
+		}
+	}
+
+	double sum = 0;
+	for(auto &v : nodes){
+		sum += v.mass;
+	}
+
+	printf("The total mass is %0.15g %0.15g", sum, static_cast<double>(N*N*N));
 		
 
     return 0;

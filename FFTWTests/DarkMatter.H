@@ -73,5 +73,37 @@ checkCondition(bool condition, const char* errorMessage) {
     }
 }
 
+inline int single_index_node(const int& i, const int& j, const int& k, const int& N)
+{
+    return k * (N+1) * (N+1) + j * (N+1) + i;
+}
+
+inline void get_global_node_index_and_indices(const int& id, const int& i, const int& j, const int& k, const int& N, int& gid, std::vector<int>& node_indices)
+{
+	int inode, jnode, knode;
+    if(id == 0){
+		inode = i; jnode = j; knode = k;
+    } else if (id == 1){
+		inode = i+1; jnode = j; knode = k;
+    } else if (id == 2){
+		inode = i+1; jnode = j+1; knode = k;
+    } else if (id == 3){
+		inode = i; jnode = j+1; knode = k;
+    } else if (id == 4){
+		inode = i; jnode = j; knode = k+1;
+    } else if (id == 5){
+		inode = i+1; jnode = j; knode = k+1;
+    } else if (id == 6){
+		inode = i+1; jnode = j+1; knode = k+1;
+    } else if (id == 7){
+		inode = i; jnode = j+1; knode = k+1;
+    }
+	gid = single_index_node(inode,jnode,knode,N);
+	node_indices[0] = inode;
+	node_indices[1] = jnode;
+	node_indices[2] = knode;
+	 
+}
+
 
 #endif // DARKMATTER_H
