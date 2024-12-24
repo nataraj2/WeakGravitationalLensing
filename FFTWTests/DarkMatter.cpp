@@ -133,8 +133,63 @@ compute_fourier_coefficients_for_psi(const int N, const double L, const fftw_com
                     if(k_phys_int[2] == N/2) {
                         psi_z_k[index][1] = 0.0;
                     }
+
+					double k_mag_int = std::sqrt(k_phys_int[0] * k_phys_int[0] + k_phys_int[1] * k_phys_int[1] + k_phys_int[2] * k_phys_int[2]);
                 }
             }
         }
     }
 }
+
+
+void compute_power_spectrum(const int&  N, const double& L, const std::vector<double>& field, 
+							std::vector<std::pair<double, double>>& k_and_field_k_unsrt)
+{
+
+	fftw_complex *data = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
+	fftw_complex *fft_out = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
+	
+	 for (int k = 0; k < N; ++k) {
+        for (int j = 0; j < N; ++j) {
+            for (int i = 0; i < N; ++i) {
+                int index = k * N * N + j * N + i;
+                data[index][0] = field[index];
+                data[index][1] = 0.0;
+            }
+        }
+    }
+
+	 // Perform the Fourier transform
+    fftw_plan forward_plan = fftw_plan_dft_3d(N, N, N, data, fft_out, FFTW_FORWARD, FFTW_ESTIMATE);
+    fftw_execute(forward_plan);
+    fftw_destroy_plan(forward_plan);
+    fftw_free(data);
+
+	int total_points = N * N * N;
+    for (int kz = 0; kz <= N/2; ++kz) {
+        for (int ky = 0; ky <= N/2; ++ky) {
+            for (int kx = 0; kx <= N/2; ++kx) {
+                int idx = kz * N * N + ky * N + kx; // 3D index flattened
+                double real_part = fft_out[idx][0]/total_points;
+                double imag_part = fft_out[idx][1]/total_points;
+                 //std::cout << "k=(" << i << ", " << j << ", " << k << ") : "
+                  //       << "Real=" << real_part << ", Imag=" << imag_part << std::endl;
+
+                std::vector<double> k_phys(3,0.0);
+                std::vector<int> k_phys_int(3,0);
+
+                get_physical_wavenumber(L, N, kx, ky, kz, k_phys, k_phys_int);
+                double k_mag = std::sqrt(k_phys[0] * k_phys[0] + k_phys[1] * k_phys[1] + k_phys[2] * k_phys[2]);
+                double tmp = 2.0*(real_part*real_part + imag_part*imag_part);
+                tmp = std::fabs(tmp) < 1e-14 ? 0.0 : tmp;
+
+                std::pair<double, double> data_tmp = {k_mag, tmp};
+                k_and_field_k_unsrt.emplace_back(data_tmp);
+            }
+        }
+    }
+
+    sort_power_spectrum(k_and_field_k_unsrt);
+    fftw_free(fft_out);
+}
+

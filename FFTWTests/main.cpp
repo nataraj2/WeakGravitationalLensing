@@ -4,7 +4,7 @@ inline double
 power_spectrum(double k)
 {
     if(k != 0.0) {
-        return 1e-5/(k*k);
+        return 1e-6/(k*k);
     } else {
         return 0.0;
     }
@@ -16,7 +16,7 @@ int main() {
     
     // Define grid size
     const int N = 128; // Number of points in each dimension
-    const double L = 1.0; // Domain size in each dimension
+    const double L = 2.0*M_PI; // Domain size in each dimension
     const double dx = L / N; // Grid spacing
 
     // Allocate memory for the function and its Fourier transform
@@ -44,49 +44,23 @@ int main() {
                 int index = k * N * N + j * N + i;
                 delta[index] = data[index][0]; // Example: radial distance
                 //std::cout << "x=(" << i << ", " << j << ", " << k << ") : "
-                  //      << "Value = " << data[idx][0] << "         " << data[idx][1] << std::endl; // Real part only
+                  //      << "Value = " << data[index][0] << "         " << data[index][1] << std::endl; // Real part only
             }
         }
     }
 
     // Write to VTK file
-    writeStructuredGridVTK("delta_field.vtk", N, N, N, delta);
-	
-	// Perform the Fourier transform
-    fftw_plan forward_plan = fftw_plan_dft_3d(N, N, N, data, fft_out, FFTW_FORWARD, FFTW_ESTIMATE);
-    fftw_execute(forward_plan);
-    fftw_destroy_plan(forward_plan);
-    fftw_free(data);
+    //writeStructuredGridVTK("delta_field.vtk", N, N, N, delta);
 
-    // Output the results
-    std::cout << "Fourier Transform Output:" << std::endl;
+	auto it_min = min_element(delta.begin(), delta.end());
+	auto it_max = max_element(delta.begin(), delta.end());
+
+	std::cout << "The min and max elements are " << *it_min << " " << *it_max << "\n";
+	
 
 	std::vector<std::pair<double, double>> k_and_delta_k_unsrt;
-	for (int kz = 0; kz <= N/2; ++kz) {
-        for (int ky = 0; ky <= N/2; ++ky) {
-            for (int kx = 0; kx <= N/2; ++kx) {
-				int idx = kz * N * N + ky * N + kx; // 3D index flattened
-				double real_part = fft_out[idx][0]/total_points;
-                double imag_part = fft_out[idx][1]/total_points;
-	             //std::cout << "k=(" << i << ", " << j << ", " << k << ") : "
-                  //       << "Real=" << real_part << ", Imag=" << imag_part << std::endl;
-
-				std::vector<double> k_phys(3,0.0);
-				std::vector<int> k_phys_int(3,0);
-
-				get_physical_wavenumber(L, N, kx, ky, kz, k_phys, k_phys_int);
-                double k_mag = std::sqrt(k_phys[0] * k_phys[0] + k_phys[1] * k_phys[1] + k_phys[2] * k_phys[2]);
-				double tmp = 2.0*(real_part*real_part + imag_part*imag_part);
-				tmp = std::fabs(tmp) < 1e-14 ? 0.0 : tmp;
-
-				std::pair<double, double> data_tmp = {k_mag, tmp};
-				k_and_delta_k_unsrt.emplace_back(data_tmp);
-			}
-		}
-	}
-
-	sort_power_spectrum(k_and_delta_k_unsrt);
-
+	compute_power_spectrum(N, L, delta, k_and_delta_k_unsrt);
+	
 	std::cout << "Size is " << k_and_delta_k_unsrt.size() << "\n";
 
 	FILE* file_k_vs_delta_k;
@@ -136,7 +110,7 @@ int main() {
                 int index = kz * N * N + ky * N + kx; // 3D index flattened
 				//std::cout << kx << " " << ky << " " << kz << " " << psi_x_k[index][0] << " " << psi_x_k[index][1] << "\n"; 
 				//std::cout << kx << " " << ky << " " << kz << " " << psi_z[index][0] << " " << psi_z[index][1] << "\n"; 
-				std::cout << "Values are " << psi_x[index][0] << " " << psi_y[index][0] << " " << psi_z[index][0] << "\n";
+				//std::cout << "Values are " << psi_x[index][0] << " " << psi_y[index][0] << " " << psi_z[index][0] << "\n";
 				psi_mag.emplace_back(std::sqrt(psi_x[index][0]*psi_x[index][0] + psi_y[index][0]*psi_y[index][0] + psi_z[index][0]*psi_z[index][0]));
 			}
 		}
@@ -155,6 +129,7 @@ int main() {
         std::exit(EXIT_FAILURE); // Exit with failure
     }
 				
+	// Create mesh of particles and displace
 	std::vector<DMParticle> dm_particles;
 
 	for (int k = 0; k < N; ++k) {
@@ -175,8 +150,7 @@ int main() {
 		}
 	}
 				
-	// Create mesh of particles and displace
-	plot_DM_particles_vtk(dm_particles);
+	//plot_DM_particles_vtk(dm_particles);
 
 	// Assign mass to nodes
 
@@ -185,10 +159,11 @@ int main() {
 
 	for(auto &v : nodes){
 		v.mass = 0.0;
+		v.ncontrib = 0;
 	}
 
 	std::vector<int>node_indices(3,0);
-	int index;
+	int node_index;
 	for (int n = 0; n < dm_particles.size(); ++n) {
 		double xp = dm_particles[n].x;
 		double yp = dm_particles[n].y;
@@ -202,28 +177,68 @@ int main() {
 		// Distribute the mass to the 8 nodes of the cell based on bilinear interpolation
 	
 		for(int id=0; id<8; id++) {
-			get_global_node_index_and_indices(id, i, j, k, N, index, node_indices);
+			get_global_node_index_and_indices(id, i, j, k, N, node_index, node_indices);
 			// Find the trilinear interpolation coefficetns
 			double xnode = node_indices[0]*dx;
 			double ynode = node_indices[1]*dx;
 			double znode = node_indices[2]*dx;
-
+		
 			double wx = 1.0 - std::fabs(xp - xnode)/dx;
 			double wy = 1.0 - std::fabs(yp - ynode)/dx;
 			double wz = 1.0 - std::fabs(zp - znode)/dx;
 
-			nodes[index].mass = nodes[index].mass + wx*wy*wz*1.0;			
+			nodes[node_index].mass = nodes[node_index].mass +wx*wy*wz*1.0;
+			nodes[node_index].ncontrib += 1;	
 		}
 	}
 
-	double sum = 0;
+	std::vector<double> rho(N * N * N, 0.0);
+	for (int k = 0; k < N; ++k) {
+        for (int j = 0; j < N; ++j) {
+            for (int i = 0; i < N; ++i) {
+                int index = k * N * N + j * N + i;
+				for(int id=0; id<8; id++) {
+					get_global_node_index_and_indices(id, i, j, k, N, node_index, node_indices);
+					rho[index] += nodes[node_index].mass*int(8/nodes[node_index].ncontrib);
+				}
+				rho[index] = (rho[index]/8.0 - 1.0)/1.0;
+			}
+		}
+	}
+
+    //writeStructuredGridVTK("rho_field.vtk", N, N, N, rho);
+
+	double sum = 0.0;
 	for(auto &v : nodes){
 		sum += v.mass;
 	}
 
-	printf("The total mass is %0.15g %0.15g", sum, static_cast<double>(N*N*N));
-		
+	double rho_mean = 0.0;
+	for(auto &v : rho){
+		rho_mean += v;
+	}
 
+	double delta_mean = 0.0;
+	for(auto &v : delta){
+		delta_mean += v;
+	}
+	
+	printf("The delta mean is %0.15g\n", delta_mean);
+	
+	printf("The total mass is %0.15g %0.15g %0.15g\n", sum, rho_mean, static_cast<double>(N*N*N));
+
+
+	std::vector<std::pair<double, double>> k_and_rho_k_unsrt;
+	compute_power_spectrum(N, L, rho, k_and_rho_k_unsrt);
+
+	FILE* file_k_vs_rho_k;
+	file_k_vs_rho_k = fopen("k_vs_rho_k.txt","w");	
+	
+	for(const auto& p : k_and_rho_k_unsrt) {
+		fprintf(file_k_vs_rho_k,"%0.15g %0.15g %0.15g\n", p.first, p.second, power_spectrum(p.first));
+        //std::cout << "(" << p.first << ", " << p.second << ")\n";
+    }	
+	fclose(file_k_vs_rho_k);
+	
     return 0;
 }
-

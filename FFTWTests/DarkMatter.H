@@ -23,6 +23,7 @@ class Node
 {
 	public:
 		double mass;
+		int ncontrib;
 };
 
 void 
@@ -31,6 +32,9 @@ generate_fourier_coefficients_for_field_with_spectrum(const int N, const double 
 void
 compute_fourier_coefficients_for_psi(const int N, const double L, const fftw_complex *delta_k,
                                      fftw_complex *psi_x_k, fftw_complex *psi_y_k, fftw_complex *psi_z_k);
+
+void compute_power_spectrum(const int&  N, const double& L, const std::vector<double>& field,
+                            std::vector<std::pair<double, double>>& k_and_field_k_unsrt);
 
 void plot_DM_particles_vtk (std::vector<DMParticle>& dm_particles);
 
