@@ -4,7 +4,7 @@ inline double
 power_spectrum(double k)
 {
     if(k != 0.0) {
-        return 1e-6/(k*k);
+        return 1e-6*k/(1.0 + std::pow(k,4));
     } else {
         return 0.0;
     }
@@ -15,7 +15,7 @@ int main() {
 
     
     // Define grid size
-    const int N = 128; // Number of points in each dimension
+    const int N = 512; // Number of points in each dimension
     const double L = 2.0*M_PI; // Domain size in each dimension
     const double dx = L / N; // Grid spacing
 
@@ -208,6 +208,105 @@ int main() {
 
     //writeStructuredGridVTK("rho_field.vtk", N, N, N, rho);
 
+
+	fftw_complex *rho_data = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
+    fftw_complex *rho_k = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
+	
+	double sigma_k = 1.0/(2.0*M_PI*0.225*dx);
+
+     for (int k = 0; k < N; ++k) {
+        for (int j = 0; j < N; ++j) {
+            for (int i = 0; i < N; ++i) {
+                int index = k * N * N + j * N + i;
+			
+                rho_data[index][0] = rho[index];
+                rho_data[index][1] = 0.0;
+            }
+        }
+    }
+
+     // Perform the Fourier transform
+    fftw_plan forward_plan = fftw_plan_dft_3d(N, N, N, rho_data, rho_k, FFTW_FORWARD, FFTW_ESTIMATE);
+    fftw_execute(forward_plan);
+    fftw_destroy_plan(forward_plan);
+    fftw_free(rho_data);
+
+	fftw_complex *rho_filt_k = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
+	fftw_complex *rho_filt_data = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
+
+	 for (int kz = 0; kz < N; ++kz) {
+        for (int ky = 0; ky < N; ++ky) {
+            for (int kx = 0; kx < N; ++kx) {
+                int index = kz * N * N + ky * N + kx;
+			
+				std::vector<double> k_phys(3,0.0);
+                std::vector<int> k_phys_int(3,0);
+
+                get_physical_wavenumber(L, N, kx, ky, kz, k_phys, k_phys_int);
+			
+				double k_mag = std::sqrt(k_phys[0] * k_phys[0] + k_phys[1] * k_phys[1] + k_phys[2] * k_phys[2]);
+
+				//double Gfac = std::exp(-k_mag*k_mag/(2.0*sigma_k*sigma_k));
+				double width = 6.0*dx;
+				
+				double Gfac = 3.0/std::pow(k_mag*width,3)*(std::sin(k_mag*width) - k_mag*width*std::cos(k_mag*width));
+				if(k_mag == 0){
+					Gfac = 1.0;
+				}
+
+                //rho_filt_k[index][0] = rho_k[index][0]*Gfac/(N * N * N);
+                //rho_filt_k[index][1] = rho_k[index][1]*Gfac/(N * N * N);
+
+				double W_CIC_x = std::sin(M_PI*k_phys_int[0]/(2.0*N/2.0))/(M_PI*k_phys_int[0]/(2.0*N/2.0));
+				double W_CIC_y = std::sin(M_PI*k_phys_int[1]/(2.0*N/2.0))/(M_PI*k_phys_int[1]/(2.0*N/2.0));
+				double W_CIC_z = std::sin(M_PI*k_phys_int[2]/(2.0*N/2.0))/(M_PI*k_phys_int[2]/(2.0*N/2.0));
+			
+				if(k_phys_int[0] == 0.0){
+					W_CIC_x = 1.0;
+				}
+				if(k_phys_int[1] == 0.0){
+					W_CIC_y = 1.0;
+				}
+				if(k_phys_int[2] == 0.0){
+					W_CIC_z = 1.0;
+				}
+				double W_CIC = W_CIC_x * W_CIC_y * W_CIC_z;	
+
+				rho_filt_k[index][0] = rho_k[index][0]/(N * N * N);
+                rho_filt_k[index][1] = rho_k[index][1]/(N * N * N);
+
+				//rho_filt_k[index][0] = rho_filt_k[index][0]/(W_CIC*W_CIC);
+                //rho_filt_k[index][1] = rho_filt_k[index][1]/(W_CIC*W_CIC);
+
+				rho_filt_k[index][0] = rho_filt_k[index][0]*Gfac;
+                rho_filt_k[index][1] = rho_filt_k[index][1]*Gfac;
+
+				double k_mag_int = std::sqrt(k_phys_int[0] * k_phys_int[0] + k_phys_int[1] * k_phys_int[1] + k_phys_int[2] * k_phys_int[2]);
+
+				if(k_mag_int > 2.0/3.0*N/2.0) {
+					//rho_filt_k[index][0] = 0.0;
+					//rho_filt_k[index][1] = 0.0;
+				}
+            }
+        }
+    }
+
+    inverse_plan = fftw_plan_dft_3d(N, N, N, rho_filt_k, rho_filt_data, FFTW_BACKWARD, FFTW_ESTIMATE);
+    fftw_execute(inverse_plan);
+    fftw_destroy_plan(inverse_plan);
+	fftw_free(rho_filt_k);
+
+	std::vector<double> rho_filt(N * N * N, 0.0);
+	for (int k = 0; k < N; ++k) {
+        for (int j = 0; j < N; ++j) {
+            for (int i = 0; i < N; ++i) {
+                int index = k * N * N + j * N + i;
+				rho_filt[index] = rho_filt_data[index][0];
+			}
+		}
+	}
+
+
 	double sum = 0.0;
 	for(auto &v : nodes){
 		sum += v.mass;
@@ -229,7 +328,7 @@ int main() {
 
 
 	std::vector<std::pair<double, double>> k_and_rho_k_unsrt;
-	compute_power_spectrum(N, L, rho, k_and_rho_k_unsrt);
+	compute_power_spectrum(N, L, rho_filt, k_and_rho_k_unsrt);
 
 	FILE* file_k_vs_rho_k;
 	file_k_vs_rho_k = fopen("k_vs_rho_k.txt","w");	

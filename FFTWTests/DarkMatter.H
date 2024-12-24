@@ -108,6 +108,4 @@ inline void get_global_node_index_and_indices(const int& id, const int& i, const
 	node_indices[2] = knode;
 	 
 }
-
-
 #endif // DARKMATTER_H

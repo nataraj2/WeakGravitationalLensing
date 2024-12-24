@@ -181,7 +181,7 @@ void compute_power_spectrum(const int&  N, const double& L, const std::vector<do
                 get_physical_wavenumber(L, N, kx, ky, kz, k_phys, k_phys_int);
                 double k_mag = std::sqrt(k_phys[0] * k_phys[0] + k_phys[1] * k_phys[1] + k_phys[2] * k_phys[2]);
                 double tmp = 2.0*(real_part*real_part + imag_part*imag_part);
-                tmp = std::fabs(tmp) < 1e-14 ? 0.0 : tmp;
+                //tmp = std::fabs(tmp) < 1e-14 ? 0.0 : tmp;
 
                 std::pair<double, double> data_tmp = {k_mag, tmp};
                 k_and_field_k_unsrt.emplace_back(data_tmp);
