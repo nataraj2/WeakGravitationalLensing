@@ -272,7 +272,9 @@ int main() {
 
 				double sigma_k = 1.0/(2.0*M_PI*dx);
 				double Gfac = std::exp(-k_mag*k_mag/(2.0*sigma_k*sigma_k));
-				//double Gfac = 1.0/(1.0 + std::pow(k_mag/sigma_k,2));
+				//double Gfac = 0.5*(1.0 + std::tanh((sigma_k - k_mag)/(0.1*N/2*2*M_PI/L)));
+				
+				//double Gfac = 1.0/(1.0 + std::pow(k_mag/sigma_k,3));
 				//double Gfac = std::exp(-k_mag/sigma_k);
 				double width = 3.0*dx;
 				
