@@ -4,7 +4,7 @@ inline double
 power_spectrum(double k)
 {
     if(k != 0.0) {
-        return 1e-6*k/(1.0 + std::pow(k,4));
+        return 1e-8*k/(1.0 + std::pow(k,4));
     } else {
         return 0.0;
     }
@@ -15,7 +15,7 @@ int main() {
 
     
     // Define grid size
-    const int N = 512; // Number of points in each dimension
+    const int N = 768; // Number of points in each dimension
     const double L = 2.0*M_PI; // Domain size in each dimension
     const double dx = L / N; // Grid spacing
 
@@ -175,19 +175,44 @@ int main() {
 		int k = int(zp/dx);
 
 		// Distribute the mass to the 8 nodes of the cell based on bilinear interpolation
-	
+		double sum_weights = 0.0;
 		for(int id=0; id<8; id++) {
 			get_global_node_index_and_indices(id, i, j, k, N, node_index, node_indices);
 			// Find the trilinear interpolation coefficetns
 			double xnode = node_indices[0]*dx;
 			double ynode = node_indices[1]*dx;
 			double znode = node_indices[2]*dx;
-		
-			double wx = 1.0 - std::fabs(xp - xnode)/dx;
-			double wy = 1.0 - std::fabs(yp - ynode)/dx;
-			double wz = 1.0 - std::fabs(zp - znode)/dx;
 
-			nodes[node_index].mass = nodes[node_index].mass +wx*wy*wz*1.0;
+			double wx, wy, wz;
+			double weight = get_interp_coefficients_trilinear(xp, yp, zp, 
+									xnode, ynode, znode,
+									wx, wy, wz,
+									dx);
+			/*double weight = get_interp_coefficients_cubic_spline(xp, yp, zp, 
+									xnode, ynode, znode,
+									wx, wy, wz,
+									dx); */
+
+				
+			sum_weights += weight;
+		}
+		for(int id=0; id<8; id++) {
+            get_global_node_index_and_indices(id, i, j, k, N, node_index, node_indices);
+			double xnode = node_indices[0]*dx;
+            double ynode = node_indices[1]*dx;
+            double znode = node_indices[2]*dx;
+
+            double wx, wy, wz;
+            double weight = get_interp_coefficients_trilinear(xp, yp, zp,
+                                    xnode, ynode, znode,
+                                    wx, wy, wz,
+                                    dx); 
+			/*double weight = get_interp_coefficients_cubic_spline(xp, yp, zp, 
+									xnode, ynode, znode,
+									wx, wy, wz,
+									dx); */
+
+			nodes[node_index].mass = nodes[node_index].mass + weight/sum_weights;
 			nodes[node_index].ncontrib += 1;	
 		}
 	}
@@ -201,7 +226,7 @@ int main() {
 					get_global_node_index_and_indices(id, i, j, k, N, node_index, node_indices);
 					rho[index] += nodes[node_index].mass*int(8/nodes[node_index].ncontrib);
 				}
-				rho[index] = (rho[index]/8.0 - 1.0)/1.0;
+				rho[index] = (rho[index]/(8.0) - 1.0)/1.0;
 			}
 		}
 	}
@@ -212,7 +237,6 @@ int main() {
 	fftw_complex *rho_data = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
     fftw_complex *rho_k = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
 	
-	double sigma_k = 1.0/(2.0*M_PI*0.225*dx);
 
      for (int k = 0; k < N; ++k) {
         for (int j = 0; j < N; ++j) {
@@ -246,10 +270,13 @@ int main() {
 			
 				double k_mag = std::sqrt(k_phys[0] * k_phys[0] + k_phys[1] * k_phys[1] + k_phys[2] * k_phys[2]);
 
-				//double Gfac = std::exp(-k_mag*k_mag/(2.0*sigma_k*sigma_k));
-				double width = 6.0*dx;
+				double sigma_k = 1.0/(2.0*M_PI*dx);
+				double Gfac = std::exp(-k_mag*k_mag/(2.0*sigma_k*sigma_k));
+				//double Gfac = 1.0/(1.0 + std::pow(k_mag/sigma_k,2));
+				//double Gfac = std::exp(-k_mag/sigma_k);
+				double width = 3.0*dx;
 				
-				double Gfac = 3.0/std::pow(k_mag*width,3)*(std::sin(k_mag*width) - k_mag*width*std::cos(k_mag*width));
+				//double Gfac = 3.0/std::pow(k_mag*width,3)*(std::sin(k_mag*width) - k_mag*width*std::cos(k_mag*width));
 				if(k_mag == 0){
 					Gfac = 1.0;
 				}

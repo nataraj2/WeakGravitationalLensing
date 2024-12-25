@@ -22,7 +22,7 @@ class DMParticle
 class Node
 {
 	public:
-		double mass;
+		double weight, mass;
 		int ncontrib;
 };
 
@@ -105,7 +105,45 @@ inline void get_global_node_index_and_indices(const int& id, const int& i, const
 	gid = single_index_node(inode,jnode,knode,N);
 	node_indices[0] = inode;
 	node_indices[1] = jnode;
-	node_indices[2] = knode;
-	 
+	node_indices[2] = knode;	 
 }
+
+inline double 
+get_interp_coefficients_trilinear(const double &xp, const double& yp, const double& zp,
+                                    const double& xnode, const double& ynode, const double& znode,
+                                    double& wx, double& wy, double& wz,
+                                    const double& dx)
+{
+	wx = 1.0 - std::fabs(xp - xnode)/dx;
+    wy = 1.0 - std::fabs(yp - ynode)/dx;
+    wz = 1.0 - std::fabs(zp - znode)/dx;
+	
+	return wx*wy*wz;
+}
+
+inline double 
+get_interp_coefficients_cubic_spline(const double &xp, const double& yp, const double& zp,
+                                    const double& xnode, const double& ynode, const double& znode,
+                                    double& wx, double& wy, double& wz,
+                                    const double& dx)
+{
+	double dist = std::sqrt((xp - xnode)*(xp - xnode) + (yp - ynode)*(yp - ynode) + (zp - znode)*(zp - znode));
+	double r = dist/dx;
+
+	double weight = 0.0;
+	if(r <= 1.0) {
+		weight = 1.0 - 3.0/2.0*r*r* + 3.0/4.0*r*r*r;
+	} else if (r < 2.0) {
+		weight = 1.0/4.0*std::pow(2.0 - r,3);
+	} else if (r > 2.0) {
+		weight = 0.0;
+	}
+	return weight;
+}
+
+
+
+
+
+
 #endif // DARKMATTER_H
