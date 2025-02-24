@@ -33,12 +33,22 @@ void
 compute_fourier_coefficients_for_psi(const int N, const double L, const fftw_complex *delta_k,
                                      fftw_complex *psi_x_k, fftw_complex *psi_y_k, fftw_complex *psi_z_k);
 
-void compute_power_spectrum(const int&  N, const double& L, const std::vector<double>& field,
+void 
+compute_power_spectrum(const int&  N, const double& L, const std::vector<double>& field,
                             std::vector<std::pair<double, double>>& k_and_field_k_unsrt);
+void
+create_cell_centered_rho_field(const int& N, const double& dx, const std::vector<DMParticle>& dm_particles, 
+							  std::vector<Node>& nodes, const double& rho_mean, std::vector<double>& rho);
+
+void 
+compute_rho_filtered(const int& N, const double& L, const double& dx, 
+					 const std::vector<double>& rho, std::vector<double>& rho_filt);
 
 void plot_DM_particles_vtk (std::vector<DMParticle>& dm_particles);
 
 void writeStructuredGridVTK(const std::string& filename, int nx, int ny, int nz, const std::vector<double>& scalarField);
+
+
 
 inline void sort_power_spectrum(std::vector<std::pair<double, double>>& data)
 {

@@ -4,7 +4,7 @@ inline double
 power_spectrum(double k)
 {
     if(k != 0.0) {
-        return 1e-8*k/(1.0 + std::pow(k,4));
+        return 1e-8*k;///(1.0 + std::pow(k,4));
     } else {
         return 0.0;
     }
@@ -15,8 +15,8 @@ int main() {
 
     
     // Define grid size
-    const int N = 768; // Number of points in each dimension
-    const double L = 2.0*M_PI; // Domain size in each dimension
+    const int N = 256; // Number of points in each dimension
+    const double L = 7700.0; // Domain size in each dimension
     const double dx = L / N; // Grid spacing
 
     // Allocate memory for the function and its Fourier transform
@@ -117,7 +117,7 @@ int main() {
 	}
 
 	auto it = max_element(psi_mag.begin(),psi_mag.end());
-	std::cout << "Max value is " << *it << "\n";
+	std::cout << "Max value and dx is " << *it << " " << static_cast<double>(L/N) <<  "\n";
 
 	try {
         // Custom assert with throwing an error
@@ -146,6 +146,12 @@ int main() {
 				dm_particle_tmp.z = zcen + psi_z[index][0];
 
 				dm_particles.emplace_back(dm_particle_tmp);
+
+				/*dm_particle_tmp.x = xcen + 0.1*psi_x[index][0]; 
+				dm_particle_tmp.y = ycen + 0.2*psi_y[index][0]; 
+				dm_particle_tmp.z = zcen + 0.8*psi_z[index][0];
+				dm_particles.emplace_back(dm_particle_tmp);*/
+
 			}
 		}
 	}
@@ -154,196 +160,41 @@ int main() {
 
 	// Assign mass to nodes
 
+	const int N_test = N;
+
 	std::vector<Node> nodes;
-	nodes.resize((N+1) * (N+1) * (N+1));
+	nodes.resize((N_test+1) * (N_test+1) * (N_test+1));
 
 	for(auto &v : nodes){
 		v.mass = 0.0;
 		v.ncontrib = 0;
 	}
 
-	std::vector<int>node_indices(3,0);
-	int node_index;
-	for (int n = 0; n < dm_particles.size(); ++n) {
-		double xp = dm_particles[n].x;
-		double yp = dm_particles[n].y;
-		double zp = dm_particles[n].z;
+	const double fac = static_cast<double>((N_test+1e-10)/(N+1e-10));
+
+	std::vector<double> rho(N_test * N_test * N_test, 0.0);
+	const double rho_mean = N * N * N/(L * L * L);
+	create_cell_centered_rho_field(N_test, dx/fac, dm_particles, nodes, rho_mean, rho);
+
+	std::vector<double> rho_filt(N_test * N_test * N_test, 0.0);
+	compute_rho_filtered(N_test, L, dx/fac, rho, rho_filt);
 	
-		// Cell indices	
-		int i = int(xp/dx);
-		int j = int(yp/dx);
-		int k = int(zp/dx);
-
-		// Distribute the mass to the 8 nodes of the cell based on bilinear interpolation
-		double sum_weights = 0.0;
-		for(int id=0; id<8; id++) {
-			get_global_node_index_and_indices(id, i, j, k, N, node_index, node_indices);
-			// Find the trilinear interpolation coefficetns
-			double xnode = node_indices[0]*dx;
-			double ynode = node_indices[1]*dx;
-			double znode = node_indices[2]*dx;
-
-			double wx, wy, wz;
-			double weight = get_interp_coefficients_trilinear(xp, yp, zp, 
-									xnode, ynode, znode,
-									wx, wy, wz,
-									dx);
-			/*double weight = get_interp_coefficients_cubic_spline(xp, yp, zp, 
-									xnode, ynode, znode,
-									wx, wy, wz,
-									dx); */
-
-				
-			sum_weights += weight;
-		}
-		for(int id=0; id<8; id++) {
-            get_global_node_index_and_indices(id, i, j, k, N, node_index, node_indices);
-			double xnode = node_indices[0]*dx;
-            double ynode = node_indices[1]*dx;
-            double znode = node_indices[2]*dx;
-
-            double wx, wy, wz;
-            double weight = get_interp_coefficients_trilinear(xp, yp, zp,
-                                    xnode, ynode, znode,
-                                    wx, wy, wz,
-                                    dx); 
-			/*double weight = get_interp_coefficients_cubic_spline(xp, yp, zp, 
-									xnode, ynode, znode,
-									wx, wy, wz,
-									dx); */
-
-			nodes[node_index].mass = nodes[node_index].mass + weight/sum_weights;
-			nodes[node_index].ncontrib += 1;	
-		}
-	}
-
-	std::vector<double> rho(N * N * N, 0.0);
-	for (int k = 0; k < N; ++k) {
-        for (int j = 0; j < N; ++j) {
-            for (int i = 0; i < N; ++i) {
-                int index = k * N * N + j * N + i;
-				for(int id=0; id<8; id++) {
-					get_global_node_index_and_indices(id, i, j, k, N, node_index, node_indices);
-					rho[index] += nodes[node_index].mass*int(8/nodes[node_index].ncontrib);
-				}
-				rho[index] = (rho[index]/(8.0) - 1.0)/1.0;
-			}
-		}
-	}
-
-    //writeStructuredGridVTK("rho_field.vtk", N, N, N, rho);
-
-
-	fftw_complex *rho_data = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
-    fftw_complex *rho_k = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
-	
-
-     for (int k = 0; k < N; ++k) {
-        for (int j = 0; j < N; ++j) {
-            for (int i = 0; i < N; ++i) {
-                int index = k * N * N + j * N + i;
-			
-                rho_data[index][0] = rho[index];
-                rho_data[index][1] = 0.0;
-            }
-        }
-    }
-
-     // Perform the Fourier transform
-    fftw_plan forward_plan = fftw_plan_dft_3d(N, N, N, rho_data, rho_k, FFTW_FORWARD, FFTW_ESTIMATE);
-    fftw_execute(forward_plan);
-    fftw_destroy_plan(forward_plan);
-    fftw_free(rho_data);
-
-	fftw_complex *rho_filt_k = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
-	fftw_complex *rho_filt_data = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
-
-	 for (int kz = 0; kz < N; ++kz) {
-        for (int ky = 0; ky < N; ++ky) {
-            for (int kx = 0; kx < N; ++kx) {
-                int index = kz * N * N + ky * N + kx;
-			
-				std::vector<double> k_phys(3,0.0);
-                std::vector<int> k_phys_int(3,0);
-
-                get_physical_wavenumber(L, N, kx, ky, kz, k_phys, k_phys_int);
-			
-				double k_mag = std::sqrt(k_phys[0] * k_phys[0] + k_phys[1] * k_phys[1] + k_phys[2] * k_phys[2]);
-
-				double sigma_k = 1.0/(2.0*M_PI*dx);
-				double Gfac = std::exp(-k_mag*k_mag/(2.0*sigma_k*sigma_k));
-				//double Gfac = 0.5*(1.0 + std::tanh((sigma_k - k_mag)/(0.1*N/2*2*M_PI/L)));
-				
-				//double Gfac = 1.0/(1.0 + std::pow(k_mag/sigma_k,3));
-				//double Gfac = std::exp(-k_mag/sigma_k);
-				double width = 3.0*dx;
-				
-				//double Gfac = 3.0/std::pow(k_mag*width,3)*(std::sin(k_mag*width) - k_mag*width*std::cos(k_mag*width));
-				if(k_mag == 0){
-					Gfac = 1.0;
-				}
-
-                //rho_filt_k[index][0] = rho_k[index][0]*Gfac/(N * N * N);
-                //rho_filt_k[index][1] = rho_k[index][1]*Gfac/(N * N * N);
-
-				double W_CIC_x = std::sin(M_PI*k_phys_int[0]/(2.0*N/2.0))/(M_PI*k_phys_int[0]/(2.0*N/2.0));
-				double W_CIC_y = std::sin(M_PI*k_phys_int[1]/(2.0*N/2.0))/(M_PI*k_phys_int[1]/(2.0*N/2.0));
-				double W_CIC_z = std::sin(M_PI*k_phys_int[2]/(2.0*N/2.0))/(M_PI*k_phys_int[2]/(2.0*N/2.0));
-			
-				if(k_phys_int[0] == 0.0){
-					W_CIC_x = 1.0;
-				}
-				if(k_phys_int[1] == 0.0){
-					W_CIC_y = 1.0;
-				}
-				if(k_phys_int[2] == 0.0){
-					W_CIC_z = 1.0;
-				}
-				double W_CIC = W_CIC_x * W_CIC_y * W_CIC_z;	
-
-				rho_filt_k[index][0] = rho_k[index][0]/(N * N * N);
-                rho_filt_k[index][1] = rho_k[index][1]/(N * N * N);
-
-				//rho_filt_k[index][0] = rho_filt_k[index][0]/(W_CIC*W_CIC);
-                //rho_filt_k[index][1] = rho_filt_k[index][1]/(W_CIC*W_CIC);
-
-				rho_filt_k[index][0] = rho_filt_k[index][0]*Gfac;
-                rho_filt_k[index][1] = rho_filt_k[index][1]*Gfac;
-
-				double k_mag_int = std::sqrt(k_phys_int[0] * k_phys_int[0] + k_phys_int[1] * k_phys_int[1] + k_phys_int[2] * k_phys_int[2]);
-
-				if(k_mag_int > 2.0/3.0*N/2.0) {
-					//rho_filt_k[index][0] = 0.0;
-					//rho_filt_k[index][1] = 0.0;
-				}
-            }
-        }
-    }
-
-    inverse_plan = fftw_plan_dft_3d(N, N, N, rho_filt_k, rho_filt_data, FFTW_BACKWARD, FFTW_ESTIMATE);
-    fftw_execute(inverse_plan);
-    fftw_destroy_plan(inverse_plan);
-	fftw_free(rho_filt_k);
-
-	std::vector<double> rho_filt(N * N * N, 0.0);
-	for (int k = 0; k < N; ++k) {
-        for (int j = 0; j < N; ++j) {
-            for (int i = 0; i < N; ++i) {
-                int index = k * N * N + j * N + i;
-				rho_filt[index] = rho_filt_data[index][0];
-			}
-		}
-	}
-
 
 	double sum = 0.0;
 	for(auto &v : nodes){
 		sum += v.mass;
+		//std::cout << "nconbtrib is " << v.ncontrib << "\n";
+		if(v.ncontrib==0) {
+			//std::cout << "There are zero contirbution nodes" << "\n";
+		}
+		if(v.mass > 1.0){
+			 //std::cout << "There are cells with more than one particle " << v.mass  << "\n";
+		}
 	}
 
-	double rho_mean = 0.0;
+	double rho_avg = 0.0;
 	for(auto &v : rho){
-		rho_mean += v;
+		rho_avg += v;
 	}
 
 	double delta_mean = 0.0;
@@ -353,11 +204,11 @@ int main() {
 	
 	printf("The delta mean is %0.15g\n", delta_mean);
 	
-	printf("The total mass is %0.15g %0.15g %0.15g\n", sum, rho_mean, static_cast<double>(N*N*N));
+	printf("The total mass is %0.15g %0.15g %0.15g %0.15g\n", sum, rho_avg, rho_mean, static_cast<double>(N*N*N));
 
 
 	std::vector<std::pair<double, double>> k_and_rho_k_unsrt;
-	compute_power_spectrum(N, L, rho_filt, k_and_rho_k_unsrt);
+	compute_power_spectrum(N_test, L, rho_filt, k_and_rho_k_unsrt);
 
 	FILE* file_k_vs_rho_k;
 	file_k_vs_rho_k = fopen("k_vs_rho_k.txt","w");	

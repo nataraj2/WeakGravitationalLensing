@@ -193,3 +193,205 @@ void compute_power_spectrum(const int&  N, const double& L, const std::vector<do
     fftw_free(fft_out);
 }
 
+void 
+create_cell_centered_rho_field(const int& N, const double& dx, const std::vector<DMParticle>& dm_particles,
+							   std::vector<Node>& nodes, const double& rho_mean, std::vector<double>& rho)
+{
+
+	std::vector<int>node_indices(3,0);
+	std::vector<int> num_part_in_cell(N * N * N,0);
+    int node_index;
+    for (int n = 0; n < dm_particles.size(); ++n) {
+        double xp = dm_particles[n].x;
+        double yp = dm_particles[n].y;
+        double zp = dm_particles[n].z;
+
+        // Cell indices
+        int i = int(xp/dx);
+        int j = int(yp/dx);
+        int k = int(zp/dx);
+
+		int index = k * N * N + j * N + i;
+		num_part_in_cell[index] += 1;
+	
+        // Distribute the mass to the 8 nodes of the cell based on bilinear interpolation
+        double sum_weights = 0.0;
+		std::vector<double> weight_vec(8,0.0);
+        for(int id=0; id<8; id++) {
+            get_global_node_index_and_indices(id, i, j, k, N, node_index, node_indices);
+            // Find the trilinear interpolation coefficetns
+            double xnode = node_indices[0]*dx;
+            double ynode = node_indices[1]*dx;
+            double znode = node_indices[2]*dx;
+
+            double wx, wy, wz;
+            double weight = get_interp_coefficients_trilinear(xp, yp, zp,
+                                    xnode, ynode, znode,
+                                    wx, wy, wz,
+                                    dx);
+            /*double weight = get_interp_coefficients_cubic_spline(xp, yp, zp,
+                                    xnode, ynode, znode,
+                                    wx, wy, wz,
+                                    dx); */
+
+		
+            sum_weights += weight;
+        }
+		if(std::fabs(sum_weights-1.0) > 1e-10){
+				std::cout << "The sum of weights is not one " << sum_weights <<  " " << i << " " << j << " " << k << "\n";
+				//for(auto &v: weight_vec){
+				//	std::cout << v << "\n";
+				//}
+				exit(0);
+			}
+
+        for(int id=0; id<8; id++) {
+            get_global_node_index_and_indices(id, i, j, k, N, node_index, node_indices);
+            double xnode = node_indices[0]*dx;
+            double ynode = node_indices[1]*dx;
+            double znode = node_indices[2]*dx;
+
+            double wx, wy, wz;
+            double weight = get_interp_coefficients_trilinear(xp, yp, zp,
+                                    xnode, ynode, znode,
+                                    wx, wy, wz,
+                                    dx);
+            /*double weight = get_interp_coefficients_cubic_spline(xp, yp, zp,
+                                    xnode, ynode, znode,
+                                    wx, wy, wz,
+                                    dx); */
+
+            nodes[node_index].mass = nodes[node_index].mass + weight;///sum_weights;
+            nodes[node_index].ncontrib += 1;
+        }
+    }
+
+    for (int k = 0; k < N; ++k) {
+        for (int j = 0; j < N; ++j) {
+            for (int i = 0; i < N; ++i) {
+                int index = k * N * N + j * N + i;
+                for(int id=0; id<8; id++) {
+                    get_global_node_index_and_indices(id, i, j, k, N, node_index, node_indices);
+					if(nodes[node_index].mass!=0.0){
+                    	rho[index] += nodes[node_index].mass/nodes[node_index].ncontrib*num_part_in_cell[index];
+					}
+                }
+                rho[index] = (rho[index]/(dx*dx*dx) - rho_mean)/rho_mean;
+                //rho[index] = rho[index]/(dx*dx*dx);
+            }
+        }
+    }
+}
+
+
+void
+compute_rho_filtered(const int& N, const double& L, const double& dx, 
+					 const std::vector<double>& rho, std::vector<double>& rho_filt)
+{
+	fftw_complex *rho_data = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
+    fftw_complex *rho_k = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
+
+
+     for (int k = 0; k < N; ++k) {
+        for (int j = 0; j < N; ++j) {
+            for (int i = 0; i < N; ++i) {
+                int index = k * N * N + j * N + i;
+
+                rho_data[index][0] = rho[index];
+                rho_data[index][1] = 0.0;
+            }
+        }
+    }
+
+     // Perform the Fourier transform
+    fftw_plan forward_plan = fftw_plan_dft_3d(N, N, N, rho_data, rho_k, FFTW_FORWARD, FFTW_ESTIMATE);
+    fftw_execute(forward_plan);
+    fftw_destroy_plan(forward_plan);
+    fftw_free(rho_data);
+
+    fftw_complex *rho_filt_k = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
+    fftw_complex *rho_filt_data = (fftw_complex*) fftw_malloc(sizeof(fftw_complex) * N * N * N);
+
+     for (int kz = 0; kz < N; ++kz) {
+        for (int ky = 0; ky < N; ++ky) {
+            for (int kx = 0; kx < N; ++kx) {
+                int index = kz * N * N + ky * N + kx;
+
+                std::vector<double> k_phys(3,0.0);
+                std::vector<int> k_phys_int(3,0);
+
+                get_physical_wavenumber(L, N, kx, ky, kz, k_phys, k_phys_int);
+
+                double k_mag = std::sqrt(k_phys[0] * k_phys[0] + k_phys[1] * k_phys[1] + k_phys[2] * k_phys[2]);
+
+                double sigma_k = 1.0/(2.0*M_PI*0.2*dx);
+                double Gfac = std::exp(-k_mag*k_mag/(2.0*sigma_k*sigma_k));
+                //double Gfac = 0.5*(1.0 + std::tanh((sigma_k - k_mag)/(0.1*N/2*2*M_PI/L)));
+
+                //double Gfac = 1.0/(1.0 + std::pow(k_mag/sigma_k,3));
+                //double Gfac = std::exp(-k_mag/sigma_k);
+                double width = 3.0*dx;
+
+                //double Gfac = 3.0/std::pow(k_mag*width,3)*(std::sin(k_mag*width) - k_mag*width*std::cos(k_mag*width));
+                if(k_mag == 0){
+                    Gfac = 1.0;
+                }
+
+                //rho_filt_k[index][0] = rho_k[index][0]*Gfac/(N * N * N);
+                //rho_filt_k[index][1] = rho_k[index][1]*Gfac/(N * N * N);
+
+                double W_CIC_x = std::sin(M_PI*k_phys_int[0]/(2.0*N/2.0))/(M_PI*k_phys_int[0]/(2.0*N/2.0));
+                double W_CIC_y = std::sin(M_PI*k_phys_int[1]/(2.0*N/2.0))/(M_PI*k_phys_int[1]/(2.0*N/2.0));
+                double W_CIC_z = std::sin(M_PI*k_phys_int[2]/(2.0*N/2.0))/(M_PI*k_phys_int[2]/(2.0*N/2.0));
+
+                if(k_phys_int[0] == 0.0){
+                    W_CIC_x = 1.0;
+                }
+                if(k_phys_int[1] == 0.0){
+                    W_CIC_y = 1.0;
+                }
+                if(k_phys_int[2] == 0.0){
+                    W_CIC_z = 1.0;
+                }
+                double W_CIC = W_CIC_x * W_CIC_y * W_CIC_z;
+
+                rho_filt_k[index][0] = rho_k[index][0]/(N * N * N);
+                rho_filt_k[index][1] = rho_k[index][1]/(N * N * N);
+
+                //rho_filt_k[index][0] = rho_filt_k[index][0]/(W_CIC*W_CIC);
+                //rho_filt_k[index][1] = rho_filt_k[index][1]/(W_CIC*W_CIC);
+
+                rho_filt_k[index][0] = rho_filt_k[index][0]*Gfac;
+                rho_filt_k[index][1] = rho_filt_k[index][1]*Gfac;
+
+                double k_mag_int = std::sqrt(k_phys_int[0] * k_phys_int[0] + k_phys_int[1] * k_phys_int[1] + k_phys_int[2] * k_phys_int[2]);
+
+                if(k_mag_int > 2.0/3.0*N/2.0) {
+                    //rho_filt_k[index][0] = 0.0;
+                    //rho_filt_k[index][1] = 0.0;
+                }
+            }
+        }
+    }
+
+    fftw_plan inverse_plan = fftw_plan_dft_3d(N, N, N, rho_filt_k, rho_filt_data, FFTW_BACKWARD, FFTW_ESTIMATE);
+    fftw_execute(inverse_plan);
+    fftw_destroy_plan(inverse_plan);
+    fftw_free(rho_filt_k);
+
+    for (int k = 0; k < N; ++k) {
+        for (int j = 0; j < N; ++j) {
+            for (int i = 0; i < N; ++i) {
+                int index = k * N * N + j * N + i;
+                rho_filt[index] = rho_filt_data[index][0];
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
